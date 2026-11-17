@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="theme-color" content="#f8f8f5">
+	<title>Your Study Space — Axiom</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			color-scheme: light;
+			--ink: #202b27;
+			--muted: #6d7872;
+			--green: #245c49;
+			--green-dark: #194b3a;
+			--mint: #e8f0e9;
+			--paper: #f8f8f5;
+			--white: #fff;
+			--line: #e7e9e3;
+			--sans: "DM Sans", sans-serif;
+			--display: "Manrope", sans-serif;
+		}
+
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			min-height: 100vh;
+			background: var(--paper);
+			color: var(--ink);
+			font-family: var(--sans);
+		}
+		a { color: inherit; text-decoration: none; }
+
+		.topbar {
+			height: 78px;
+			display: flex;
+			align-items: center;
+			padding: 0 32px;
+			border-bottom: 1px solid var(--line);
+			background: var(--white);
+		}
+		.nav {
+			width: min(1120px, 100%);
+			margin: 0 auto;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+		.brand {
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+			font: 800 20px var(--display);
+			letter-spacing: -1px;
+		}
+		.brand-mark {
+			width: 31px;
+			height: 31px;
+			display: grid;
+			place-items: center;
+			color: white;
+			background: var(--green);
+			border-radius: 10px 10px 10px 3px;
+		}
+		.brand-mark svg { width: 18px; height: 18px; }
+		
+		.logout-btn {
+			padding: 8px 16px;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			background: var(--paper);
+			color: var(--muted);
+			font-size: 13px;
+			font-weight: 600;
+			transition: all 0.2s;
+		}
+		.logout-btn:hover {
+			border-color: var(--green);
+			color: var(--green);
+		}
+
+		.dashboard-wrap {
+			width: min(1120px, calc(100% - 48px));
+			margin: 40px auto;
+		}
+		h1 {
+			font: 700 32px var(--display);
+			letter-spacing: -1px;
+			margin-bottom: 8px;
+		}
+		.subtitle {
+			color: var(--muted);
+			font-size: 14px;
+			margin-bottom: 32px;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+			gap: 20px;
+		}
+		.card {
+			padding: 24px;
+			background: var(--white);
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			box-shadow: 0 10px 30px rgba(35, 55, 43, 0.03);
+		}
+		.card h3 {
+			margin-top: 0;
+			font: 700 18px var(--display);
+		}
+		.card p {
+			color: var(--muted);
+			font-size: 13px;
+			line-height: 1.6;
+		}
+		.start-link {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			margin-top: 16px;
+			color: var(--green);
+			font-weight: 700;
+			font-size: 13px;
+		}
+	</style>
+</head>
+<body>
+	<header class="topbar">
+		<nav class="nav">
+			<a class="brand" href="{{ url_for('home') }}">
+				<span class="brand-mark">
+					<svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5c2.8-.9 5.2-.5 7 1.1v11c-1.8-1.6-4.2-2-7-1.1v-11Zm14 0c-2.8-.9-5.2-.5-7 1.1v11c1.8-1.6 4.2-2 7-1.1v-11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+				</span>
+				Axiom Study
+			</a>
+			<a class="logout-btn" href="{{ url_for('home') }}">Log out</a>
+		</nav>
+	</header>
+
+	<main class="dashboard-wrap">
+		<h1>Welcome to your study hub.</h1>
+		<p class="subtitle">Pick up where you left off with your AS Level revision.</p>
+
+		<div class="grid">
+			<div class="card">
+				<h3>Biology Notes</h3>
+				<p>Review cell structures, enzymes, and biological molecules with bite-sized summaries.</p>
+				<a class="start-link" href="#">Open notes →</a>
+			</div>
+			<div class="card">
+				<h3>Mathematics Practice</h3>
+				<p>Solve targeted past paper questions and check step-by-step solutions.</p>
+				<a class="start-link" href="#">Start practice →</a>
+			</div>
+			<div class="card">
+				<h3>AI Doubt Solver</h3>
+				<p>Stuck on a tricky concept or derivation? Ask your AI study companion for clear guidance.</p>
+				<a class="start-link" href="#">Ask a question →</a>
+			</div>
+		</div>
+	</main>
+</body>
+</html>
