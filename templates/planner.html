@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="theme-color" content="#f8f8f5">
+	<meta name="description" content="Build a personalized CAIE AS Level study plan with weighted interleaving and export it as a clean photo.">
+	<title>Study Plan Generator — Axiom</title>
+	<header class="topbar">
+		<nav class="nav" style="width: min(1120px, 100%); margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
+			<a class="brand" href="{{ url_for('study_dashboard') }}">
+				<span class="brand-mark" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none">
+						<path d="M5 6.5c2.8-.9 5.2-.5 7 1.1v11c-1.8-1.6-4.2-2-7-1.1v-11Zm14 0c-2.8-.9-5.2-.5-7 1.1v11c1.8-1.6 4.2-2 7-1.1v-11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+					</svg>
+				</span>
+				Axiom
+			</a>
+			<a class="back-link" href="{{ url_for('study_dashboard') }}" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 600;">
+				<svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+					<path d="M16 10H5m4-4-4 4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				Back to study hub
+			</a>
+		</nav>
+	</header>
+
+	<main>
+
+	<!-- Google Fonts matching Axiom's exact typography -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+	<!-- Tailwind CSS for responsive layout & utilities -->
+	<script src="https://cdn.tailwindcss.com"></script>
+
+	<!-- html2canvas for crisp PNG photo export -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+	<script>
+		tailwind.config = {
+			theme: {
+				extend: {
+					colors: {
+						ink: '#202b27',
+						muted: '#6d7872',
+						green: {
+							DEFAULT: '#245c49',
+							dark: '#194b3a',
+						},
+						mint: '#e8f0e9',
+						paper: '#f8f8f5',
+						line: '#e7e9e3',
+						amberwarm: '#e6a967',
+					},
+					fontFamily: {
+						sans: ['"DM Sans"', 'sans-serif'],
+						display: ['"Manrope"', 'sans-serif'],
+						serif: ['Georgia', '"Times New Roman"', 'serif'],
+					}
+				}
+			}
+		}
+	</script>
+
+	<style>
+		:root {
+			color-scheme: light;
+			--ink: #202b27;
+			--muted: #6d7872;
+			--green: #245c49;
+			--green-dark: #194b3a;
+			--mint: #e8f0e9;
+			--paper: #f8f8f5;
+			--white: #ffffff;
+			--line: #e7e9e3;
+			--serif: Georgia, "Times New Roman", serif;
+			--sans: "DM Sans", sans-serif;
+			--display: "Manrope", sans-serif;
+		}
+
+		* { box-sizing: border-box; }
+		html { scroll-behavior: smooth; }
+		body {
+			margin: 0;
+			background-color: var(--paper);
+			color: var(--ink);
+			font-family: var(--sans);
+			-webkit-font-smoothing: antialiased;
+		}
+
+		/* Custom Range Sliders matching Axiom's calm aesthetic */
+		input[type="range"] {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 100%;
+			height: 6px;
+			background: #e5e8e1;
+			border-radius: 999px;
+			outline: none;
+		}
+		input[type="range"]::-webkit-slider-thumb {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 20px;
+			height: 20px;
+			border-radius: 50%;
+			background: var(--green);
+			border: 3px solid #ffffff;
+			box-shadow: 0 2px 6px rgba(32, 43, 39, 0.22);
+			cursor: pointer;
+			transition: transform 0.15s ease, background 0.15s ease;
+		}
+		input[type="range"]::-webkit-slider-thumb:hover {
+			transform: scale(1.1);
+			background: var(--green-dark);
+		}
+		input[type="range"]::-moz-range-thumb {
+			width: 20px;
+			height: 20px;
+			border-radius: 50%;
+			background: var(--green);
+			border: 3px solid #ffffff;
+			box-shadow: 0 2px 6px rgba(32, 43, 39, 0.22);
+			cursor: pointer;
+		}
+
+		/* Subtle custom scrollbar for chapter lists */
+		.chapter-scroll::-webkit-scrollbar {
+			width: 5px;
+		}
+		.chapter-scroll::-webkit-scrollbar-track {
+			background: transparent;
+		}
+		.chapter-scroll::-webkit-scrollbar-thumb {
+			background: #d7dbd2;
+			border-radius: 999px;
+		}
+
+		/* Session checkbox animation */
+		.session-item.completed .session-title {
+			text-decoration: line-through;
+			color: #8a948e;
+		}
+		.session-item.completed {
+			background-color: #fafbf9;
+			opacity: 0.85;
+		}
+
+		/* Toast notification animation */
+		@keyframes slideUpFade {
+			from { opacity: 0; transform: translateY(12px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+		.toast-animate {
+			animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+		}
+	</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+	<!-- Top Navigation Bar (Matches Axiom main.html & study.html) -->
+	<header class="h-[78px] flex items-center border-b border-ink/[0.07] bg-paper/90 backdrop-blur-sm sticky top-0 z-30">
+		<nav class="w-[min(1160px,calc(100%-36px))] sm:w-[min(1160px,calc(100%-48px))] mx-auto flex items-center justify-between gap-4" aria-label="Primary navigation">
+			<a href="main.html" class="inline-flex items-center gap-2.5 font-display font-extrabold text-[20px] tracking-[-1px] text-ink" aria-label="Axiom home">
+				<span class="w-[31px] h-[31px] grid place-items-center text-white bg-green rounded-[10px_10px_10px_3px]">
+					<svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none">
+						<path d="M5 6.5c2.8-.9 5.2-.5 7 1.1v11c-1.8-1.6-4.2-2-7-1.1v-11Zm14 0c-2.8-.9-5.2-.5-7 1.1v11c1.8-1.6 4.2-2 7-1.1v-11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+					</svg>
+				</span>
+				Axiom
+			</a>
+
+			<div class="hidden md:flex items-center gap-7 text-[13px] font-semibold text-[#53605a]">
+				<a href="study.html" class="hover:text-green transition-colors">Study Hub</a>
+				<a href="#planner-form" class="text-green font-bold">Plan Generator</a>
+				<a href="#schedule-output" class="hover:text-green transition-colors">Your Roadmap</a>
+			</div>
+
+			<div class="flex items-center gap-2.5">
+				<a href="study.html" class="px-3.5 py-2 border border-line rounded-lg bg-white text-muted hover:border-green hover:text-green text-[12px] sm:text-[13px] font-semibold transition-all">
+					← Back to Hub
+				</a>
+			</div>
+		</nav>
+	</header>
+
+	<!-- Main Content -->
+	<main class="flex-1 w-[min(1160px,calc(100%-36px))] sm:w-[min(1160px,calc(100%-48px))] mx-auto py-8 sm:py-12">
+
+		<!-- Hero / Page Header -->
+		<section class="mb-8 sm:mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+			<div class="max-w-2xl">
+				<div class="inline-flex items-center gap-2 text-green text-[11px] font-bold tracking-[1.15px] uppercase mb-3">
+					<span class="w-[7px] h-[7px] bg-amberwarm rounded-full"></span>
+					CAIE AS Level Revision Engine
+				</div>
+				<h1 class="font-display font-bold text-[34px] sm:text-[46px] leading-[1.08] tracking-[-2px] text-ink mb-3">
+					Build a study plan that <em class="font-serif italic font-medium text-green tracking-[-1px]">clicks.</em>
+				</h1>
+				<p class="text-muted text-[14px] sm:text-[15px] leading-[1.7] m-0">
+					Set your countdown days, daily study hours, and syllabus confidence. Axiom balances subjects automatically so you never burn out—and leaves the final stretch for timed past papers.
+				</p>
+			</div>
+
+			<!-- Quick Live Summary Pill -->
+			<div class="bg-white border border-line rounded-2xl px-5 py-3.5 shadow-[0_10px_28px_rgba(35,55,43,0.04)] flex items-center gap-5 shrink-0">
+				<div>
+					<div class="text-[10px] font-bold uppercase tracking-wider text-muted">Total Capacity</div>
+					<div class="font-display font-extrabold text-[20px] text-ink" id="top-total-hours">42.0 hrs</div>
+				</div>
+				<div class="h-8 w-[1px] bg-line"></div>
+				<div>
+					<div class="text-[10px] font-bold uppercase tracking-wider text-muted">Chapters Selected</div>
+					<div class="font-display font-extrabold text-[20px] text-green" id="top-selected-count">12 topics</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Two-Column Workspace: Left Configurator Form / Right Generated Visual Roadmap -->
+		<div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+
+			<!-- LEFT COLUMN: Configuration Form (5 cols on lg) -->
+			<aside id="planner-form" class="lg:col-span-5 bg-white border border-line rounded-2xl p-5 sm:p-6 shadow-[0_14px_40px_rgba(35,55,43,0.045)]">
+				<div class="flex items-center justify-between pb-4 mb-5 border-b border-line">
+					<div>
+						<h2 class="font-display font-bold text-[18px] tracking-[-0.5px] text-ink m-0">1. Configure Your Schedule</h2>
+						<p class="text-[12px] text-muted m-0 mt-0.5">Tailor your timeframe & syllabus topics</p>
+					</div>
+					<button type="button" id="reset-defaults-btn" class="text-[11px] font-bold text-muted hover:text-green underline underline-offset-2 transition-colors">
+						Reset defaults
+					</button>
+				</div>
+
+				<!-- Plan Title Input -->
+				<div class="mb-5">
+					<label for="plan-title-input" class="block text-[12px] font-bold text-ink mb-1.5">Plan Title (shown on exported photo)</label>
+					<input
+						type="text"
+						id="plan-title-input"
+						value="AS Level May/June Sprint"
+						maxlength="48"
+						placeholder="e.g., AS Level Mock Exam Prep"
+						class="w-full h-[42px] px-3.5 rounded-xl border border-line bg-paper text-[13px] font-medium text-ink focus:outline-none focus:bg-white focus:border-green focus:ring-2 focus:ring-green/15 transition-all"
+					>
+				</div>
+
+				<!-- Sliders: Days & Daily Hours -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 mb-6 p-4 rounded-xl bg-paper border border-line">
+					<!-- Days Slider -->
+					<div>
+						<div class="flex items-center justify-between mb-1.5">
+							<label for="days-input" class="text-[12px] font-bold text-ink">Study Days Available</label>
+							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-mint text-green-dark font-display font-extrabold text-[12px]">
+								<span id="days-display">14</span>&nbsp;days
+							</span>
+						</div>
+						<input type="range" id="days-input" min="3" max="45" value="14" step="1">
+						<div class="flex justify-between text-[10px] text-muted mt-1">
+							<span>3 days (cram)</span>
+							<span>21 days</span>
+							<span>45 days</span>
+						</div>
+					</div>
+
+					<div class="form-group">
+        			<label>Your Selected Subjects (from account)</label>
+        			<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 8px;">
+        		    	{% set selected = user_subjects.split(', ') if user_subjects else [] %}
+            
+            		<label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                		<input type="checkbox" name="planner-subject" value="Biology" {% if 'Biology' in selected %}checked{% endif %}> Biology (9700)
+            		</label>
+					<label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+						<input type="checkbox" name="planner-subject" value="Chemistry" {% if 'Chemistry' in selected %}checked{% endif %}> Chemistry (9701)
+					</label>
+					<label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+						<input type="checkbox" name="planner-subject" value="Physics" {% if 'Physics' in selected %}checked{% endif %}> Physics (9702)
+					</label>
+					<label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+						<input type="checkbox" name="planner-subject" value="Mathematics" {% if 'Mathematics' in selected %}checked{% endif %}> Mathematics (9709)
+					</label>
+       			 </div>
+    		</div>
+
+					<!-- Daily Hours Slider -->
+					<div class="pt-2 sm:pt-0 lg:pt-2 border-t sm:border-t-0 lg:border-t border-line/80">
+						<div class="flex items-center justify-between mb-1.5">
+							<label for="hours-input" class="text-[12px] font-bold text-ink">Daily Study Goal</label>
+							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-mint text-green-dark font-display font-extrabold text-[12px]">
+								<span id="hours-display">3.0</span>&nbsp;hrs/day
+							</span>
+						</div>
+						<input type="range" id="hours-input" min="1" max="8" value="3" step="0.5">
+						<div class="flex justify-between text-[10px] text-muted mt-1">
+							<span>1 hr (light)</span>
+							<span>4 hrs</span>
+							<span>8 hrs (intensive)</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Subject Tabs & Chapter Selector -->
+				<div class="mb-5">
+					<div class="flex items-center justify-between mb-2.5">
+						<span class="text-[12px] font-bold text-ink">2. Select Chapters & Confidence</span>
+						<span class="text-[11px] text-muted" id="subject-selected-badge">3 selected</span>
+					</div>
+
+					<!-- Subject Selector Tabs -->
+					<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-paper border border-line rounded-xl mb-3" role="tablist" aria-label="AS Level Subjects">
+						<button type="button" role="tab" data-subject="Biology" class="subject-tab active py-2 px-2 rounded-lg text-[12px] font-bold transition-all bg-white text-green shadow-xs border border-line/60">
+							Biology
+						</button>
+						<button type="button" role="tab" data-subject="Chemistry" class="subject-tab py-2 px-2 rounded-lg text-[12px] font-semibold text-muted hover:text-ink transition-all">
+							Chemistry
+						</button>
+						<button type="button" role="tab" data-subject="Physics" class="subject-tab py-2 px-2 rounded-lg text-[12px] font-semibold text-muted hover:text-ink transition-all">
+							Physics
+						</button>
+						<button type="button" role="tab" data-subject="Mathematics" class="subject-tab py-2 px-2 rounded-lg text-[12px] font-semibold text-muted hover:text-ink transition-all">
+							Maths
+						</button>
+					</div>
+
+					<!-- Select All / Clear Row for Active Subject -->
+					<div class="flex items-center justify-between text-[11px] mb-2 px-1">
+						<span class="text-muted font-medium" id="syllabus-code-label">CAIE AS Biology (9700)</span>
+						<div class="flex items-center gap-3">
+							<button type="button" id="select-all-subject" class="font-bold text-green hover:underline">Select all</button>
+							<button type="button" id="clear-all-subject" class="font-semibold text-muted hover:text-ink">Clear</button>
+						</div>
+					</div>
+
+					<!-- Chapter List Container -->
+					<div id="chapter-list" class="chapter-scroll max-h-[290px] overflow-y-auto space-y-2 pr-1">
+						<!-- Dynamically populated via JS -->
+					</div>
+
+					<!-- Add Custom Chapter Form -->
+					<div class="mt-3 pt-3 border-t border-line flex gap-2">
+						<input
+							type="text"
+							id="custom-chapter-input"
+							placeholder="Add custom chapter to Biology..."
+							class="flex-1 h-[38px] px-3 rounded-lg border border-line bg-paper text-[12px] text-ink focus:outline-none focus:bg-white focus:border-green"
+						>
+						<button type="button" id="add-chapter-btn" class="h-[38px] px-3.5 rounded-lg bg-mint text-green-dark hover:bg-green hover:text-white text-[12px] font-bold transition-colors shrink-0">
+							+ Add
+						</button>
+					</div>
+				</div>
+
+				<!-- Confidence Weighting Legend -->
+				<div class="p-3 rounded-xl bg-[#f4f7f3] border border-[#dfe7de] mb-5 text-[11px] text-[#4e5d55] leading-relaxed">
+					<strong class="text-ink">Smart Weighting:</strong>
+					<span class="text-[#9e473b] font-semibold">Needs Work</span> gets 1.5× study time,
+					<span class="text-[#89602d] font-semibold">Moderate</span> gets 1.0×, and
+					<span class="text-[#245c49] font-semibold">Confident</span> gets 0.7× quick review.
+				</div>
+
+				<!-- Primary Generate Button -->
+				<button type="button" id="generate-btn" class="w-full h-[46px] rounded-xl bg-green hover:bg-green-dark text-white font-display font-bold text-[14px] inline-flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(36,92,73,0.22)] hover:-translate-y-0.5 transition-all cursor-pointer">
+					<svg class="w-4 h-4" viewBox="0 0 20 20" fill="none">
+						<path d="m10 2 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+					</svg>
+					Generate Perfect Study Plan
+				</button>
+			</aside>
+
+			<!-- RIGHT COLUMN: Generated Study Plan & Photo Export Area (7 cols on lg) -->
+			<section id="schedule-output" class="lg:col-span-7 flex flex-col gap-4">
+
+				<!-- Action Toolbar (Outside the exported photo canvas so buttons don't clutter the image) -->
+				<div class="bg-white border border-line rounded-2xl p-4 sm:px-5 flex flex-wrap items-center justify-between gap-3 shadow-[0_10px_28px_rgba(35,55,43,0.03)]">
+					<!-- Filter Pills -->
+					<div class="flex flex-wrap items-center gap-1.5" id="filter-bar">
+						<button type="button" data-filter="ALL" class="filter-btn active px-3 py-1.5 rounded-lg text-[12px] font-bold bg-green text-white transition-all">
+							All Subjects
+						</button>
+						<button type="button" data-filter="Biology" class="filter-btn px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-paper text-muted hover:text-ink border border-line transition-all">
+							Biology
+						</button>
+						<button type="button" data-filter="Chemistry" class="filter-btn px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-paper text-muted hover:text-ink border border-line transition-all">
+							Chemistry
+						</button>
+						<button type="button" data-filter="Physics" class="filter-btn px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-paper text-muted hover:text-ink border border-line transition-all">
+							Physics
+						</button>
+						<button type="button" data-filter="Mathematics" class="filter-btn px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-paper text-muted hover:text-ink border border-line transition-all">
+							Maths
+						</button>
+					</div>
+
+					<!-- Prominent Export as Photo (PNG) Button -->
+					<button type="button" id="export-photo-btn" class="h-[40px] px-4 rounded-xl bg-ink hover:bg-green-dark text-white text-[12px] sm:text-[13px] font-bold inline-flex items-center gap-2 shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer ml-auto">
+						<svg class="w-4 h-4 text-amberwarm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+							<circle cx="12" cy="13" r="4"/>
+						</svg>
+						<span id="export-btn-text">Export as Photo (PNG)</span>
+					</button>
+				</div>
+
+				<!-- Pacing Advisory Banner (Shown dynamically if workload is tight or very relaxed) -->
+				<div id="pacing-banner" class="hidden rounded-xl px-4 py-3 border text-[12px] leading-relaxed flex items-start gap-2.5">
+					<!-- Populated dynamically -->
+				</div>
+
+				<!-- ============================================================ -->
+				<!-- EXPORTABLE PHOTO CONTAINER (Captured by html2canvas)         -->
+				<!-- ============================================================ -->
+				<div id="export-capture-area" class="bg-paper border border-line rounded-2xl p-5 sm:p-7 shadow-[0_18px_48px_rgba(35,55,43,0.05)]">
+
+					<!-- Branded Photo Header -->
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-5 border-b border-line">
+						<div>
+							<div class="flex items-center gap-2 mb-1.5">
+								<span class="w-[24px] h-[24px] grid place-items-center text-white bg-green rounded-[7px_7px_7px_2px]">
+									<svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none">
+										<path d="M5 6.5c2.8-.9 5.2-.5 7 1.1v11c-1.8-1.6-4.2-2-7-1.1v-11Zm14 0c-2.8-.9-5.2-.5-7 1.1v11c1.8-1.6 4.2-2 7-1.1v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+									</svg>
+								</span>
+								<span class="font-display font-extrabold text-[14px] tracking-[-0.5px] text-ink">Axiom</span>
+								<span class="text-[11px] text-muted font-medium">• Study Roadmap</span>
+							</div>
+							<h2 id="rendered-plan-title" class="font-display font-bold text-[22px] sm:text-[25px] tracking-[-0.8px] text-ink m-0">
+								AS Level May/June Sprint
+							</h2>
+						</div>
+
+						<!-- Summary Stats Badges -->
+						<div class="flex flex-wrap items-center gap-2">
+							<div class="px-3 py-1.5 rounded-xl bg-white border border-line text-center">
+								<div class="text-[9px] font-bold uppercase tracking-wider text-muted">Duration</div>
+								<div class="font-display font-extrabold text-[13px] text-ink" id="stat-days">14 Days</div>
+							</div>
+							<div class="px-3 py-1.5 rounded-xl bg-white border border-line text-center">
+								<div class="text-[9px] font-bold uppercase tracking-wider text-muted">Daily Pace</div>
+								<div class="font-display font-extrabold text-[13px] text-green" id="stat-hours">3.0 hrs/day</div>
+							</div>
+							<div class="px-3 py-1.5 rounded-xl bg-mint border border-green/20 text-center">
+								<div class="text-[9px] font-bold uppercase tracking-wider text-green-dark">Past Papers</div>
+								<div class="font-display font-extrabold text-[13px] text-green-dark" id="stat-pastpapers">Final 3 Days</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Subject Breakdown & Live Completion Bar -->
+					<div class="bg-white border border-line rounded-xl p-4 mb-5">
+						<div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+							<div class="flex flex-wrap items-center gap-3 text-[11px] font-semibold" id="subject-legend">
+								<!-- Dynamic subject pills -->
+							</div>
+							<div class="text-[11px] font-bold text-green" id="completion-text">0% completed</div>
+						</div>
+						<div class="w-full h-2 rounded-full bg-[#edf0ec] overflow-hidden">
+							<div id="completion-bar" class="h-full bg-green rounded-full transition-all duration-300" style="width: 0%;"></div>
+						</div>
+					</div>
+
+					<!-- Day-by-Day Schedule Grid -->
+					<div id="days-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+						<!-- Day cards injected dynamically by JS -->
+					</div>
+
+					<!-- Clean Footer inside exported image -->
+					<div class="mt-6 pt-4 border-t border-line flex items-center justify-between text-[10px] text-muted">
+						<span>Generated with <strong>Axiom</strong> — Free CAIE AS Level Revision</span>
+						<span id="export-date-stamp"></span>
+					</div>
+				</div>
+				<!-- ============================================================ -->
+				<!-- END EXPORTABLE PHOTO CONTAINER                               -->
+				<!-- ============================================================ -->
+
+			</section>
+		</div>
+	</main>
+
+	<!-- Footer (Matches Axiom main.html) -->
+	<footer class="border-t border-line mt-12">
+		<div class="w-[min(1160px,calc(100%-36px))] sm:w-[min(1160px,calc(100%-48px))] mx-auto min-h-[76px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-4 text-[11px] text-[#87918a]">
+			<a href="main.html" class="inline-flex items-center gap-2 font-display font-extrabold text-[16px] tracking-[-0.8px] text-ink">
+				<span class="w-[26px] h-[26px] grid place-items-center text-white bg-green rounded-[8px_8px_8px_2px]">
+					<svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none">
+						<path d="M5 6.5c2.8-.9 5.2-.5 7 1.1v11c-1.8-1.6-4.2-2-7-1.1v-11Zm14 0c-2.8-.9-5.2-.5-7 1.1v11c1.8-1.6 4.2-2 7-1.1v-11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+					</svg>
+				</span>
+				Axiom
+			</a>
+			<span>© 2026 Axiom. Exams? Game on.</span>
+		</div>
+	</footer>
+
+	<!-- Non-intrusive Toast Notification -->
+	<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+	<script>
+		/**
+		 * AXIOM STUDY PLANNER ENGINE
+		 * - Pre-loaded CAIE AS Level Science & Maths syllabus chapters
+		 * - Weighted interleaving scheduler with past-paper reserve
+		 * - High-resolution PNG export via html2canvas
+		 */
+
+		// Subject metadata & Axiom palette colors
+		const SUBJECT_META = {
+			Biology: {
+				code: 'CAIE AS Biology (9700)',
+				badgeBg: '#edf4ee',
+				badgeText: '#245c49',
+				dot: '#436e55',
+				border: '#cfe2d3'
+			},
+			Chemistry: {
+				code: 'CAIE AS Chemistry (9701)',
+				badgeBg: '#f8f3e8',
+				badgeText: '#8c6932',
+				dot: '#b8893d',
+				border: '#ebd9b9'
+			},
+			Physics: {
+				code: 'CAIE AS Physics (9702)',
+				badgeBg: '#eef0f8',
+				badgeText: '#4c5b87',
+				dot: '#677397',
+				border: '#d3daf0'
+			},
+			Mathematics: {
+				code: 'CAIE AS Mathematics (9709)',
+				badgeBg: '#f8eeeb',
+				badgeText: '#94564b',
+				dot: '#b36b5e',
+				border: '#edd3cd'
+			}
+		};
+
+		// Confidence multipliers & labels
+		const CONFIDENCE_LEVELS = {
+			weak: { label: 'Needs Work', weight: 1.5, bg: '#fbeae8', text: '#9e473b' },
+			moderate: { label: 'Moderate', weight: 1.0, bg: '#fbf1dc', text: '#89602d' },
+			confident: { label: 'Confident', weight: 0.7, bg: '#e8f0e9', text: '#245c49' }
+		};
+
+		// Default CAIE AS Level Syllabus Chapters
+		function getDefaultChapters() {
+			return [
+				// Biology (9700)
+				{ id: 'bio-1', subject: 'Biology', title: '1. Cell Structure', selected: true, confidence: 'confident' },
+				{ id: 'bio-2', subject: 'Biology', title: '2. Biological Molecules', selected: true, confidence: 'moderate' },
+				{ id: 'bio-3', subject: 'Biology', title: '3. Enzymes', selected: true, confidence: 'weak' },
+				{ id: 'bio-4', subject: 'Biology', title: '4. Cell Membranes & Transport', selected: false, confidence: 'moderate' },
+				{ id: 'bio-5', subject: 'Biology', title: '5. The Mitotic Cell Cycle', selected: false, confidence: 'confident' },
+				{ id: 'bio-6', subject: 'Biology', title: '6. Nucleic Acids & Protein Synthesis', selected: false, confidence: 'weak' },
+				{ id: 'bio-7', subject: 'Biology', title: '7. Transport in Plants & Mammals', selected: false, confidence: 'moderate' },
+				{ id: 'bio-8', subject: 'Biology', title: '8. Gas Exchange & Infectious Disease', selected: false, confidence: 'moderate' },
+
+				// Chemistry (9701)
+				{ id: 'chem-1', subject: 'Chemistry', title: '1. Atomic Structure & Stoichiometry', selected: true, confidence: 'moderate' },
+				{ id: 'chem-2', subject: 'Chemistry', title: '2. Chemical Bonding & States of Matter', selected: true, confidence: 'confident' },
+				{ id: 'chem-3', subject: 'Chemistry', title: '3. Chemical Energetics & Equilibria', selected: true, confidence: 'weak' },
+				{ id: 'chem-4', subject: 'Chemistry', title: '4. Reaction Kinetics & Electrochemistry', selected: false, confidence: 'weak' },
+				{ id: 'chem-5', subject: 'Chemistry', title: '5. Periodicity, Group 2 & Group 17', selected: false, confidence: 'moderate' },
+				{ id: 'chem-6', subject: 'Chemistry', title: '6. Intro to Organic Chemistry & Hydrocarbons', selected: false, confidence: 'moderate' },
+				{ id: 'chem-7', subject: 'Chemistry', title: '7. Halogenoalkanes, Alcohols & Carbonyls', selected: false, confidence: 'weak' },
+
+				// Physics (9702)
+				{ id: 'phys-1', subject: 'Physics', title: '1. Physical Quantities & Kinematics', selected: true, confidence: 'confident' },
+				{ id: 'phys-2', subject: 'Physics', title: '2. Dynamics, Forces & Density', selected: true, confidence: 'moderate' },
+				{ id: 'phys-3', subject: 'Physics', title: '3. Work, Energy, Power & Deformation', selected: false, confidence: 'moderate' },
+				{ id: 'phys-4', subject: 'Physics', title: '4. Waves & Superposition', selected: true, confidence: 'weak' },
+				{ id: 'phys-5', subject: 'Physics', title: '5. Electricity & D.C. Circuits', selected: false, confidence: 'weak' },
+				{ id: 'phys-6', subject: 'Physics', title: '6. Particle Physics', selected: false, confidence: 'confident' },
+
+				// Mathematics (9709)
+				{ id: 'math-1', subject: 'Mathematics', title: '1. Quadratics, Functions & Coordinate Geometry', selected: true, confidence: 'confident' },
+				{ id: 'math-2', subject: 'Mathematics', title: '2. Circular Measure & Trigonometry', selected: true, confidence: 'moderate' },
+				{ id: 'math-3', subject: 'Mathematics', title: '3. Series & Binomial Expansion', selected: false, confidence: 'moderate' },
+				{ id: 'math-4', subject: 'Mathematics', title: '4. Differentiation & Integration (Pure 1)', selected: true, confidence: 'weak' },
+				{ id: 'math-5', subject: 'Mathematics', title: '5. Probability & Normal Distribution (Stats 1)', selected: false, confidence: 'weak' }
+			];
+		}
+
+		// Application State
+		let state = {
+			planTitle: 'AS Level May/June Sprint',
+			days: 14,
+			hoursPerDay: 3.0,
+			activeSubjectTab: 'Biology',
+			activeFilter: 'ALL',
+			chapters: getDefaultChapters(),
+			generatedSchedule: [],
+			completedSessions: new Set()
+		};
+
+		// DOM Elements
+		const daysInput = document.getElementById('days-input');
+		const hoursInput = document.getElementById('hours-input');
+		const daysDisplay = document.getElementById('days-display');
+		const hoursDisplay = document.getElementById('hours-display');
+		const planTitleInput = document.getElementById('plan-title-input');
+		const chapterListEl = document.getElementById('chapter-list');
+		const customChapterInput = document.getElementById('custom-chapter-input');
+		const daysGridEl = document.getElementById('days-grid');
+
+		// Toast Helper (Never uses alert())
+		function showToast(message, type = 'success') {
+			const container = document.getElementById('toast-container');
+			const toast = document.createElement('div');
+			const bgClass = type === 'error'
+				? 'bg-[#8c2d23] text-white'
+				: 'bg-ink text-white border border-white/10';
+
+			toast.className = `toast-animate pointer-events-auto px-4 py-3 rounded-xl shadow-lg text-[12px] font-semibold flex items-center gap-2.5 ${bgClass}`;
+			toast.innerHTML = `
+				<span class="w-2 h-2 rounded-full ${type === 'error' ? 'bg-red-300' : 'bg-amberwarm'}"></span>
+				<span>${message}</span>
+			`;
+			container.appendChild(toast);
+
+			setTimeout(() => {
+				toast.style.opacity = '0';
+				toast.style.transform = 'translateY(6px)';
+				toast.style.transition = 'all 0.2s ease';
+				setTimeout(() => toast.remove(), 220);
+			}, 3200);
+		}
+
+		// Update top & sidebar counters
+		function updateCounters() {
+			const selectedChapters = state.chapters.filter(c => c.selected);
+			const totalHours = (state.days * state.hoursPerDay).toFixed(1);
+
+			document.getElementById('top-total-hours').textContent = `${totalHours} hrs`;
+			document.getElementById('top-selected-count').textContent = `${selectedChapters.length} topic${selectedChapters.length === 1 ? '' : 's'}`;
+
+			const subjectChapters = state.chapters.filter(c => c.subject === state.activeSubjectTab);
+			const subjectSelected = subjectChapters.filter(c => c.selected).length;
+			document.getElementById('subject-selected-badge').textContent = `${subjectSelected} of ${subjectChapters.length} selected`;
+			document.getElementById('syllabus-code-label').textContent = SUBJECT_META[state.activeSubjectTab].code;
+			customChapterInput.placeholder = `Add custom chapter to ${state.activeSubjectTab}...`;
+		}
+
+		// Render chapter checklist for active subject tab
+		function renderChapterList() {
+			const subjectChapters = state.chapters.filter(c => c.subject === state.activeSubjectTab);
+			chapterListEl.innerHTML = '';
+
+			subjectChapters.forEach(chap => {
+				const conf = CONFIDENCE_LEVELS[chap.confidence];
+				const row = document.createElement('div');
+				row.className = `flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all ${
+					chap.selected ? 'bg-white border-green/35 shadow-[0_2px_8px_rgba(36,92,73,0.04)]' : 'bg-paper/70 border-line opacity-80 hover:opacity-100'
+				}`;
+
+				row.innerHTML = `
+					<label class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none">
+						<input
+							type="checkbox"
+							data-id="${chap.id}"
+							${chap.selected ? 'checked' : ''}
+							class="chapter-checkbox w-4 h-4 rounded accent-[#245c49] cursor-pointer shrink-0"
+						>
+						<span class="text-[12px] font-semibold text-ink truncate" title="${chap.title}">
+							${chap.title}
+						</span>
+					</label>
+					<button
+						type="button"
+						data-id="${chap.id}"
+						title="Click to cycle confidence level"
+						style="background-color: ${conf.bg}; color: ${conf.text};"
+						class="confidence-cycle-btn px-2.5 py-1 rounded-md text-[10px] font-bold shrink-0 hover:brightness-95 transition-all cursor-pointer"
+					>
+						${conf.label}
+					</button>
+				`;
+				chapterListEl.appendChild(row);
+			});
+
+			updateCounters();
+		}
+
+		// Cycle confidence: weak -> moderate -> confident -> weak
+		function cycleConfidence(chapterId) {
+			const chap = state.chapters.find(c => c.id === chapterId);
+			if (!chap) return;
+			const order = ['weak', 'moderate', 'confident'];
+			const nextIdx = (order.indexOf(chap.confidence) + 1) % order.length;
+			chap.confidence = order[nextIdx];
+			if (!chap.selected) chap.selected = true; // Auto-select if user adjusts confidence
+			renderChapterList();
+			generateStudyPlan(false);
+		}
+
+		/**
+		 * SMART WEIGHTED INTERLEAVING ALGORITHM
+		 * 1. Reserves final ~18% of days (at least 1 day if days >= 5) for timed past-paper practice.
+		 * 2. Allocates remaining study hours proportionally based on chapter confidence weights.
+		 * 3. Splits long chapters into manageable study blocks (max ~1.5 hrs per block) so students stay focused.
+		 * 4. Interleaves subjects across days (Round-Robin across subjects) to maximize memory retention & prevent burnout.
+		 */
+		function generateStudyPlan(notify = true) {
+			const selectedChapters = state.chapters.filter(c => c.selected);
+
+			if (selectedChapters.length === 0) {
+				showToast('Please select at least one chapter to generate a plan.', 'error');
+				return;
+			}
+
+			const totalDays = state.days;
+			const dailyHours = state.hoursPerDay;
+
+			// Reserve final ~18% of days for past papers (if 5+ days)
+			const pastPaperDaysCount = totalDays >= 5 ? Math.max(1, Math.round(totalDays * 0.18)) : 0;
+			const contentDaysCount = totalDays - pastPaperDaysCount;
+			const totalContentHours = contentDaysCount * dailyHours;
+
+			// Calculate total weight across all selected chapters
+			const totalWeight = selectedChapters.reduce((sum, ch) => sum + CONFIDENCE_LEVELS[ch.confidence].weight, 0);
+
+			// Group chapters by subject and compute exact allocated hours
+			const subjectQueues = { Biology: [], Chemistry: [], Physics: [], Mathematics: [] };
+
+			selectedChapters.forEach(ch => {
+				const weight = CONFIDENCE_LEVELS[ch.confidence].weight;
+				const rawHours = (weight / totalWeight) * totalContentHours;
+				// Round to nearest 0.25 hr (15 mins), minimum 0.5 hr
+				const allocatedHours = Math.max(0.5, Math.round(rawHours * 4) / 4);
+
+				// Split into focused blocks if a chapter is > 1.75 hours
+				const maxBlockSize = Math.min(dailyHours, 1.75);
+				let remaining = allocatedHours;
+				let part = 1;
+				const totalParts = Math.ceil(allocatedHours / maxBlockSize);
+
+				while (remaining > 0.05) {
+					const chunk = Math.min(remaining, maxBlockSize);
+					const roundedChunk = Math.max(0.25, Math.round(chunk * 4) / 4);
+					subjectQueues[ch.subject].push({
+						chapterId: ch.id,
+						subject: ch.subject,
+						title: totalParts > 1 ? `${ch.title} (Part ${part}/${totalParts})` : ch.title,
+						confidence: ch.confidence,
+						hours: roundedChunk,
+						isPastPaper: false
+					});
+					remaining -= roundedChunk;
+					part++;
+				}
+			});
+
+			// Interleave blocks across subjects (Round-Robin) so consecutive blocks vary subjects
+			const interleavedBlocks = [];
+			const subjectsOrder = ['Biology', 'Chemistry', 'Physics', 'Mathematics'];
+			let hasBlocks = true;
+
+			while (hasBlocks) {
+				hasBlocks = false;
+				for (const subj of subjectsOrder) {
+					if (subjectQueues[subj].length > 0) {
+						interleavedBlocks.push(subjectQueues[subj].shift());
+						hasBlocks = true;
+					}
+				}
+			}
+
+			// Distribute interleaved blocks into content days
+			const schedule = [];
+			let blockIdx = 0;
+
+			for (let d = 1; d <= contentDaysCount; d++) {
+				const daySessions = [];
+				let dayUsedHours = 0;
+
+				while (blockIdx < interleavedBlocks.length) {
+					const nextBlock = interleavedBlocks[blockIdx];
+					// Allow slight 0.25hr flexibility on the last content day so no chapter gets left behind
+					const cap = (d === contentDaysCount) ? dailyHours + 1.5 : dailyHours + 0.15;
+
+					if (dayUsedHours + nextBlock.hours <= cap || daySessions.length === 0) {
+						daySessions.push({
+							...nextBlock,
+							sessionId: `d${d}-s${daySessions.length}`
+						});
+						dayUsedHours += nextBlock.hours;
+						blockIdx++;
+					} else {
+						break;
+					}
+				}
+
+				// If a day has spare time (e.g., few chapters over many days), add Active Recall / Flashcard review
+				if (dayUsedHours < dailyHours - 0.4) {
+					const activeSubjects = [...new Set(selectedChapters.map(c => c.subject))];
+					const reviewSubj = activeSubjects[(d - 1) % activeSubjects.length];
+					const fillerHours = Math.max(0.5, Math.round((dailyHours - dayUsedHours) * 4) / 4);
+					daySessions.push({
+						sessionId: `d${d}-s${daySessions.length}`,
+						subject: reviewSubj,
+						title: `Active Recall & Topical Questions (${reviewSubj})`,
+						confidence: 'moderate',
+						hours: fillerHours,
+						isPastPaper: false
+					});
+				}
+
+				schedule.push({
+					day: d,
+					phase: 'Concept Mastery',
+					sessions: daySessions
+				});
+			}
+
+			// Fill final reserved days with Timed Past Paper & Mark Scheme Review
+			const activeSubjects = [...new Set(selectedChapters.map(c => c.subject))];
+			for (let p = 1; p <= pastPaperDaysCount; p++) {
+				const dayNum = contentDaysCount + p;
+				const pastSessions = [];
+				const papersPerDay = Math.min(2, activeSubjects.length);
+				const hoursPerPaper = Math.round((dailyHours / papersPerDay) * 4) / 4;
+
+				for (let i = 0; i < papersPerDay; i++) {
+					const subj = activeSubjects[(p + i - 1) % activeSubjects.length];
+					const paperType = (p % 2 === 1) ? 'Paper 2 Structured + Mark Scheme' : 'Paper 1 MCQ Timed Drill';
+					pastSessions.push({
+						sessionId: `d${dayNum}-s${i}`,
+						subject: subj,
+						title: `Timed Past Paper: ${subj} (${paperType})`,
+						confidence: 'confident',
+						hours: hoursPerPaper,
+						isPastPaper: true
+					});
+				}
+
+				schedule.push({
+					day: dayNum,
+					phase: 'Exam Simulation',
+					sessions: pastSessions
+				});
+			}
+
+			state.generatedSchedule = schedule;
+			state.completedSessions.clear();
+
+			updatePacingBanner(selectedChapters.length, totalContentHours);
+			renderSchedule();
+
+			if (notify) {
+				showToast('Study plan updated with weighted interleaving!');
+			}
+		}
+
+		// Show gentle pacing feedback
+		function updatePacingBanner(topicCount, totalContentHours) {
+			const banner = document.getElementById('pacing-banner');
+			const avgHoursPerTopic = totalContentHours / Math.max(1, topicCount);
+
+			banner.classList.remove('hidden', 'bg-[#fbf1dc]', 'border-[#ebd4a7]', 'text-[#75501e]', 'bg-mint', 'border-green/20', 'text-green-dark');
+
+			if (avgHoursPerTopic < 0.85) {
+				banner.classList.add('bg-[#fbf1dc]', 'border-[#ebd4a7]', 'text-[#75501e]');
+				banner.innerHTML = `
+					<svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v4m0 3h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+					<div><strong>High-intensity sprint detected:</strong> You have ${topicCount} chapters across ${state.days} days (~${avgHoursPerTopic.toFixed(1)} hrs/topic). Focus on high-yield definitions and weak topics first!</div>
+				`;
+			} else {
+				banner.classList.add('bg-mint', 'border-green/20', 'text-green-dark');
+				banner.innerHTML = `
+					<svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="none"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					<div><strong>Balanced rhythm:</strong> You have ~${avgHoursPerTopic.toFixed(1)} hrs per chapter plus dedicated past-paper days at the end. Small steps add up!</div>
+				`;
+			}
+		}
+
+		// Format hours cleanly (e.g., 1.5 -> "1h 30m", 2 -> "2h")
+		function formatDuration(hrs) {
+			const whole = Math.floor(hrs);
+			const mins = Math.round((hrs - whole) * 60);
+			if (whole === 0) return `${mins}m`;
+			if (mins === 0) return `${whole}h`;
+			return `${whole}h ${mins}m`;
+		}
+
+		// Render the Day-by-Day Roadmap Grid & Header Stats
+		function renderSchedule() {
+			const titleText = planTitleInput.value.trim() || 'AS Level Study Plan';
+			document.getElementById('rendered-plan-title').textContent = titleText;
+			document.getElementById('stat-days').textContent = `${state.days} Day${state.days === 1 ? '' : 's'}`;
+			document.getElementById('stat-hours').textContent = `${state.hoursPerDay.toFixed(1)} hrs/day`;
+
+			const pastPaperDays = state.generatedSchedule.filter(d => d.phase === 'Exam Simulation').length;
+			document.getElementById('stat-pastpapers').textContent = pastPaperDays > 0 ? `Final ${pastPaperDays} Day${pastPaperDays > 1 ? 's' : ''}` : 'Topic Focus';
+
+			// Date stamp for exported image
+			const now = new Date();
+			document.getElementById('export-date-stamp').textContent = now.toLocaleDateString('en-GB', {
+				day: 'numeric', month: 'short', year: 'numeric'
+			});
+
+			// Render subject legend
+			const legendEl = document.getElementById('subject-legend');
+			const usedSubjects = [...new Set(state.chapters.filter(c => c.selected).map(c => c.subject))];
+			legendEl.innerHTML = usedSubjects.map(subj => {
+				const meta = SUBJECT_META[subj];
+				return `
+					<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold" style="background:${meta.badgeBg}; color:${meta.badgeText};">
+						<span class="w-2 h-2 rounded-full" style="background:${meta.dot};"></span>
+						${subj}
+					</span>
+				`;
+			}).join('');
+
+			// Render Day Cards
+			daysGridEl.innerHTML = '';
+
+			state.generatedSchedule.forEach(dayObj => {
+				const filteredSessions = state.activeFilter === 'ALL'
+					? dayObj.sessions
+					: dayObj.sessions.filter(s => s.subject === state.activeFilter);
+
+				if (filteredSessions.length === 0) return;
+
+				const dayTotalHrs = filteredSessions.reduce((acc, s) => acc + s.hours, 0);
+				const isExamPhase = dayObj.phase === 'Exam Simulation';
+
+				const card = document.createElement('article');
+				card.className = `rounded-xl border p-4 bg-white transition-all ${
+					isExamPhase ? 'border-green/35 bg-[#f6faf7]' : 'border-line'
+				}`;
+
+				const sessionsHtml = filteredSessions.map(sess => {
+					const meta = SUBJECT_META[sess.subject];
+					const isDone = state.completedSessions.has(sess.sessionId);
+
+					return `
+						<label class="session-item ${isDone ? 'completed' : ''} flex items-start gap-2.5 p-2.5 rounded-lg border border-line/80 bg-paper/40 hover:bg-paper cursor-pointer transition-all">
+							<input
+								type="checkbox"
+								data-session-id="${sess.sessionId}"
+								${isDone ? 'checked' : ''}
+								class="session-checkbox mt-0.5 w-3.5 h-3.5 rounded accent-[#245c49] cursor-pointer shrink-0"
+							>
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center justify-between gap-2 mb-1">
+									<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold" style="background:${meta.badgeBg}; color:${meta.badgeText};">
+										${sess.subject}
+									</span>
+									<span class="text-[10px] font-bold text-muted shrink-0">
+										${formatDuration(sess.hours)}
+									</span>
+								</div>
+								<div class="session-title text-[12px] font-semibold text-ink leading-snug">
+									${sess.title}
+								</div>
+							</div>
+						</label>
+					`;
+				}).join('');
+
+				card.innerHTML = `
+					<div class="flex items-center justify-between gap-2 mb-3">
+						<div class="flex items-center gap-2">
+							<span class="font-display font-extrabold text-[14px] text-ink">Day ${dayObj.day}</span>
+							<span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+								isExamPhase ? 'bg-green text-white' : 'bg-paper text-muted border border-line'
+							}">
+								${dayObj.phase}
+							</span>
+						</div>
+						<span class="text-[11px] font-bold text-green">${formatDuration(dayTotalHrs)}</span>
+					</div>
+					<div class="space-y-2">
+						${sessionsHtml}
+					</div>
+				`;
+
+				daysGridEl.appendChild(card);
+			});
+
+			updateCompletionProgress();
+		}
+
+		// Update progress bar based on checked sessions
+		function updateCompletionProgress() {
+			const allSessions = state.generatedSchedule.flatMap(d => d.sessions);
+			const total = allSessions.length;
+			const completed = state.completedSessions.size;
+			const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+			document.getElementById('completion-bar').style.width = `${pct}%`;
+			document.getElementById('completion-text').textContent = `${completed}/${total} sessions (${pct}%)`;
+		}
+
+		// Export Schedule Card as High-Resolution PNG Photo
+		async function exportPlanAsPhoto() {
+			const captureEl = document.getElementById('export-capture-area');
+			const exportBtn = document.getElementById('export-photo-btn');
+			const exportBtnText = document.getElementById('export-btn-text');
+
+			if (typeof html2canvas === 'undefined') {
+				showToast('Image export library is still loading. Please try again in a moment.', 'error');
+				return;
+			}
+
+			try {
+				exportBtn.disabled = true;
+				exportBtnText.textContent = 'Rendering Photo...';
+
+				// Ensure fonts are settled before rendering
+				await document.fonts.ready;
+
+				const canvas = await html2canvas(captureEl, {
+					scale: 2, // 2x Retina crisp resolution
+					backgroundColor: '#f8f8f5',
+					useCORS: true,
+					logging: false,
+					windowWidth: Math.max(captureEl.scrollWidth, 860)
+				});
+
+				const dataUrl = canvas.toDataURL('image/png', 1.0);
+				const safeTitle = (planTitleInput.value.trim() || 'axiom-study-plan')
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, '-')
+					.replace(/^-|-$/g, '');
+
+				const link = document.createElement('a');
+				link.download = `${safeTitle || 'axiom-study-plan'}.png`;
+				link.href = dataUrl;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+
+				showToast('Study plan photo saved as PNG!');
+			} catch (err) {
+				console.error('Export error:', err);
+				showToast('Could not export photo. Please try again.', 'error');
+			} finally {
+				exportBtn.disabled = false;
+				exportBtnText.textContent = 'Export as Photo (PNG)';
+			}
+		}
+
+		// ============================================================
+		// EVENT LISTENERS
+		// ============================================================
+
+		// Sliders
+		daysInput.addEventListener('input', (e) => {
+			state.days = parseInt(e.target.value, 10);
+			daysDisplay.textContent = state.days;
+			updateCounters();
+			generateStudyPlan(false);
+		});
+
+		hoursInput.addEventListener('input', (e) => {
+			state.hoursPerDay = parseFloat(e.target.value);
+			hoursDisplay.textContent = state.hoursPerDay.toFixed(1);
+			updateCounters();
+			generateStudyPlan(false);
+		});
+
+		// Plan title live update
+		planTitleInput.addEventListener('input', () => {
+			document.getElementById('rendered-plan-title').textContent =
+				planTitleInput.value.trim() || 'AS Level Study Plan';
+		});
+
+		// Subject Tabs
+		document.querySelectorAll('.subject-tab').forEach(tab => {
+			tab.addEventListener('click', () => {
+				document.querySelectorAll('.subject-tab').forEach(t => {
+					t.classList.remove('active', 'bg-white', 'text-green', 'font-bold', 'shadow-xs', 'border', 'border-line/60');
+					t.classList.add('text-muted', 'font-semibold');
+				});
+				tab.classList.add('active', 'bg-white', 'text-green', 'font-bold', 'shadow-xs', 'border', 'border-line/60');
+				tab.classList.remove('text-muted', 'font-semibold');
+
+				state.activeSubjectTab = tab.dataset.subject;
+				renderChapterList();
+			});
+		});
+
+		// Chapter List Delegation (checkboxes & confidence cycling)
+		chapterListEl.addEventListener('change', (e) => {
+			if (e.target.classList.contains('chapter-checkbox')) {
+				const chap = state.chapters.find(c => c.id === e.target.dataset.id);
+				if (chap) {
+					chap.selected = e.target.checked;
+					renderChapterList();
+					if (state.chapters.some(c => c.selected)) {
+						generateStudyPlan(false);
+					}
+				}
+			}
+		});
+
+		chapterListEl.addEventListener('click', (e) => {
+			const cycleBtn = e.target.closest('.confidence-cycle-btn');
+			if (cycleBtn) {
+				cycleConfidence(cycleBtn.dataset.id);
+			}
+		});
+
+		// Select All / Clear All for current subject
+		document.getElementById('select-all-subject').addEventListener('click', () => {
+			state.chapters.forEach(c => {
+				if (c.subject === state.activeSubjectTab) c.selected = true;
+			});
+			renderChapterList();
+			generateStudyPlan(false);
+		});
+
+		document.getElementById('clear-all-subject').addEventListener('click', () => {
+			state.chapters.forEach(c => {
+				if (c.subject === state.activeSubjectTab) c.selected = false;
+			});
+			renderChapterList();
+			if (state.chapters.some(c => c.selected)) {
+				generateStudyPlan(false);
+			}
+		});
+
+		// Add Custom Chapter
+		function handleAddCustomChapter() {
+			const val = customChapterInput.value.trim();
+			if (!val) return;
+			const newChapter = {
+				id: `custom-${Date.now()}`,
+				subject: state.activeSubjectTab,
+				title: val,
+				selected: true,
+				confidence: 'moderate'
+			};
+			state.chapters.push(newChapter);
+			customChapterInput.value = '';
+			renderChapterList();
+			generateStudyPlan(false);
+			showToast(`Added "${val}" to ${state.activeSubjectTab}`);
+		}
+
+		document.getElementById('add-chapter-btn').addEventListener('click', handleAddCustomChapter);
+		customChapterInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				handleAddCustomChapter();
+			}
+		});
+
+		// Generate Button
+		document.getElementById('generate-btn').addEventListener('click', () => {
+			generateStudyPlan(true);
+		});
+
+		// Reset Defaults Button
+		document.getElementById('reset-defaults-btn').addEventListener('click', () => {
+			state.planTitle = 'AS Level May/June Sprint';
+			state.days = 14;
+			state.hoursPerDay = 3.0;
+			state.chapters = getDefaultChapters();
+			state.activeFilter = 'ALL';
+
+			planTitleInput.value = state.planTitle;
+			daysInput.value = state.days;
+			hoursInput.value = state.hoursPerDay;
+			daysDisplay.textContent = state.days;
+			hoursDisplay.textContent = state.hoursPerDay.toFixed(1);
+
+			document.querySelectorAll('.filter-btn').forEach(btn => {
+				const isAll = btn.dataset.filter === 'ALL';
+				btn.classList.toggle('bg-green', isAll);
+				btn.classList.toggle('text-white', isAll);
+				btn.classList.toggle('font-bold', isAll);
+				btn.classList.toggle('bg-paper', !isAll);
+				btn.classList.toggle('text-muted', !isAll);
+			});
+
+			renderChapterList();
+			generateStudyPlan(false);
+			showToast('Reset to default AS Level schedule');
+		});
+
+		// Subject Filter Pills on Roadmap
+		document.querySelectorAll('.filter-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				document.querySelectorAll('.filter-btn').forEach(b => {
+					b.classList.remove('bg-green', 'text-white', 'font-bold');
+					b.classList.add('bg-paper', 'text-muted', 'font-semibold');
+				});
+				btn.classList.add('bg-green', 'text-white', 'font-bold');
+				btn.classList.remove('bg-paper', 'text-muted', 'font-semibold');
+
+				state.activeFilter = btn.dataset.filter;
+				renderSchedule();
+			});
+		});
+
+		// Session Checkboxes on Roadmap
+		daysGridEl.addEventListener('change', (e) => {
+			if (e.target.classList.contains('session-checkbox')) {
+				const sid = e.target.dataset.sessionId;
+				const itemEl = e.target.closest('.session-item');
+				if (e.target.checked) {
+					state.completedSessions.add(sid);
+					itemEl.classList.add('completed');
+				} else {
+					state.completedSessions.delete(sid);
+					itemEl.classList.remove('completed');
+				}
+				updateCompletionProgress();
+			}
+		});
+
+		// Export as Photo (PNG)
+		document.getElementById('export-photo-btn').addEventListener('click', exportPlanAsPhoto);
+
+		// Initialize on page load
+		window.addEventListener('DOMContentLoaded', () => {
+			renderChapterList();
+			generateStudyPlan(false);
+		});
+
+		document.querySelector('#generate-btn').addEventListener('click', () => {
+			// Automatically grab whichever subjects are checked (from database/profile)
+			const selectedSubjects = Array.from(
+				document.querySelectorAll('input[name="planner-subject"]:checked')
+			).map(cb => cb.value);
+
+			if (selectedSubjects.length === 0) {
+				alert('Please select at least one subject!');
+				return;
+			}
+
+			// Master syllabus chapters for each subject
+			const allChapters = {
+				"Physics": ["Kinematics", "Dynamics", "Forces & Pressure", "Work, Energy & Power", "Waves", "Superposition", "Electric Fields", "Current of Electricity", "Nuclear Physics"],
+				"Mathematics": ["Pure Math 1: Quadratics", "Pure Math 1: Functions", "Pure Math 1: Coordinate Geometry", "Pure Math 1: Differentiation", "Pure Math 1: Integration", "Mechanics: Forces & Equilibrium", "Statistics"],
+				"Chemistry": ["Moles & Stoichiometry", "Atomic Structure", "Chemical Bonding", "States of Matter", "Chemical Energetics", "Electrochemistry", "Equilibria", "Reaction Kinetics", "Organic Chemistry"],
+				"Biology": ["Cell Structure", "Biological Molecules", "Enzymes", "Cell Membranes", "Mitotic Cell Cycle", "Nucleic Acids", "Transport in Plants", "Transport in Mammals", "Gas Exchange", "Infectious Diseases"]
+			};
+
+			// Filter chapters so ONLY the user's chosen subjects are included
+			let activeChapters = [];
+			selectedSubjects.forEach(sub => {
+				if (allChapters[sub]) {
+					allChapters[sub].forEach(chap => {
+						activeChapters.push({ subject: sub, chapter: chap });
+					});
+				}
+			});
+
+			const totalDays = parseInt(document.querySelector('#days-input').value) || 14;
+			const hoursPerDay = parseFloat(document.querySelector('#hours-input').value) || 3;
+
+			// Generate your study plan roadmap using activeChapters...
+			generateRoadmap(activeChapters, totalDays, hoursPerDay);
+		});
+	</script>
+</body>
+</html>

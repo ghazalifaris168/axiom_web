@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__, instance_relative_config=True)
@@ -33,14 +33,13 @@ def login_page():
         
         # Check if user exists AND password matches
         if user and user.password == password:
-            # Successful login: redirect to study dashboard
+            session['user_subjects'] = user.subjects if user.subjects else ""
             return redirect(url_for('study_dashboard'))
         else:
-            # Failed login: reload login page with an error message
             return render_template('login.html', error="Incorrect email or password. Please try again.")
             
     return render_template('login.html')
-
+            
 @app.route('/study')
 def study_dashboard():
     return render_template('study.html')
@@ -69,6 +68,12 @@ def signup_page():
         return redirect(url_for('login_page'))
 
     return render_template('signup.html')
+@app.route('/planner')
+def study_planner():
+    user_subjects = session.get('user_subjects', '')
+
+    return render_template('planner.html', user_subjects=user_subjects)
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
